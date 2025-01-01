@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 - New `resolution` INT input: The maximum pixel size of the masks for evaluation. 0 to disable. The computation time increases with mask resolution. Note that the size of the returned mask(s) will be the same as your input mask(s).
+- New `average` BOOLEAN input: If enabled, the average position of mask pixels will be used for sorting instead of the most extreme position. May increase computation time, but is often useful for `innermost` with masks that have multiple disconnected regions.
 - Improved performance by removing need for tensor conversion step
 
 ### Fixed
