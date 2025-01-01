@@ -16,8 +16,17 @@ class MaskArbiter:
 		        "index": ("INT", {
 		            "default": 0
 		        }),
+		        "resolution": ("INT", {
+		            "default": 64,
+		            "min": 0,
+		            "tooltip": "The maximum pixel size of the masks for evaluation. 0 to disable. The computation time increases with mask resolution. Note that the size of the returned mask(s) will be the same as your input mask(s)."
+		        }),
 		    },
 		    "optional": {
+		        "average": ("BOOLEAN", {
+		            "default": False,
+		            "tooltip": "If enabled, the average position of mask pixels will be used for sorting instead of the most extreme position. May increase computation time, but is often useful for 'innermost' with masks that have multiple disconnected regions."
+		        }),
 		        "reverse": ("BOOLEAN", {
 		            "default": False
 		        })
@@ -28,53 +37,70 @@ class MaskArbiter:
 	FUNCTION = "op"
 	RETURN_TYPES = ("MASK", "MASKS")
 
-	def op(self, masks, sort_by, index, reverse):
-		masks = list(masks)
+	def op(self, masks, sort_by, index, resolution, average, reverse):
+		new_masks = list(masks)
 
-		for i in range(len(masks)):
+		print("Converting masks to tensor format...")
+		for i in range(len(new_masks)):
 			mask = np.array(masks[i])
 			mask = mask.squeeze(0)
 			mask = cv2.cvtColor(mask, cv2.COLOR_GRAY2BGR)
-			masks[i] = mask
+			new_masks[i] = mask
 
-		mask_height, mask_width = masks[0].shape[:2]
+		# print("Resizing masks if needed...")
+		# Resize masks for faster computation, preserving aspect ratio
+		if resolution > 1:
+			small_masks = []
 
+			height, width = new_masks[0].shape[:2]
+			new_width = resolution
+			new_height = int((height / width) * resolution)
+
+			for mask in new_masks:
+				small_mask = cv2.resize(mask, (new_width, new_height), interpolation=cv2.INTER_NEAREST)
+				small_masks.append(small_mask)
+		else:
+			small_masks = new_masks
+
+		mask_height, mask_width = small_masks[0].shape[:2]
+		order = None
+
+		# print("Performing mask sorting...")
 		if sort_by == "random":
 			import random
-			random.shuffle(masks)
+			order = list(range(len(new_masks)))
+			random.shuffle(order)
 		elif sort_by == "largest":
-			masks = sorted(masks, key=lambda x: np.sum(x > 0), reverse=False)
+			order = sorted(range(len(small_masks)), key=lambda i: np.sum(small_masks[i] > 0))
 		elif sort_by in ("leftmost", "topmost"):
-			i = 0
-			if sort_by == "topmost":
-				i = 1
-			bounding_boxes = []
-			for c in masks:
-				if len(c.shape) == 2 or c.shape[-1] == 1:
-					c = cv2.merge([c] * 3)
-				gray = cv2.cvtColor(c, cv2.COLOR_BGR2GRAY)
-				bounding_boxes.append(cv2.boundingRect(cv2.convertScaleAbs(gray)))
-			masks = [m for m, _ in sorted(zip(masks, bounding_boxes), key=lambda b: b[1][i])]
+			i = 0 if sort_by == "leftmost" else 1
+			if average:
+				# Compute the average position of non-zero pixels
+				order = sorted(range(len(small_masks)), key=lambda idx: np.mean(np.where(small_masks[idx] > 0)[i]) if np.any(small_masks[idx] > 0) else float("inf"))
+			else:
+				bounding_boxes = [cv2.boundingRect(cv2.convertScaleAbs(cv2.cvtColor(mask, cv2.COLOR_BGR2GRAY))) for mask in small_masks]
+				order = sorted(range(len(bounding_boxes)), key=lambda i: bounding_boxes[i][1] if sort_by == "topmost" else bounding_boxes[i][0])
 		elif sort_by == "innermost":
 			center = (mask_width // 2, mask_height // 2)
-			masks = sorted(masks, key=lambda x: abs(center[0] - x.shape[0] // 2) + abs(center[1] - x.shape[1] // 2))
-		elif sort_by == "merged":
-			merged_mask = np.zeros_like(masks[0])
-			for mask in masks:
-				merged_mask = cv2.add(merged_mask, mask)
-			masks = [merged_mask]
+			if average:
+				# Compute the average position of non-zero pixels
+				order = sorted(range(len(small_masks)), key=lambda i: (np.mean(np.where(small_masks[i] > 0)[1]) - center[0])**2 + (np.mean(np.where(small_masks[i] > 0)[0]) - center[1])**2 if np.any(small_masks[i] > 0) else float("inf"))
+			else:
+				order = sorted(range(len(small_masks)), key=lambda i: abs(center[0] - small_masks[i].shape[1] // 2) + abs(center[1] - small_masks[i].shape[0] // 2))
+		if sort_by == "merged":
+			merged_mask = np.sum(masks, axis=0, dtype=np.uint8)
+			new_masks = [merged_mask]
 
-		# Ensure that the masks are not a tuple
-		masks = list(masks)
+		# print("Applying order to the original masks...")
+		# Apply order to the original masks
+		if order:
+			masks = [masks[i] for i in order]
 
+		# print("Reversing mask order if needed...")
 		if reverse:
 			masks = masks[::-1]
 
-		# Convert mask to expected tensor format
-		for i in range(len(masks)):
-			mask = cv2.cvtColor(masks[i], cv2.COLOR_BGR2GRAY)
-			mask = np.expand_dims(mask, axis=0)
-			masks[i] = mask
-		masks = torch.tensor(masks)
+		# Convert masks to the expected tensor format
 
+		# print("Returning mask...")
 		return (masks[min(index, len(masks) - 1)], masks)
