@@ -42,8 +42,12 @@ class MaskArbiter:
 
 		print("Converting masks to tensor format...")
 		for i in range(len(new_masks)):
-			mask = np.array(masks[i])
-			mask = mask.squeeze(0)
+			try:
+				mask = np.array(masks[i])
+				mask = mask.squeeze(0)
+
+			except:
+				pass
 			mask = cv2.cvtColor(mask, cv2.COLOR_GRAY2BGR)
 			new_masks[i] = mask
 

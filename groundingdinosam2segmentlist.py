@@ -18,13 +18,13 @@ def sam_segment(sam_model, image, boxes):
 	image_np = np.array(image)
 	image_np_rgb = image_np[..., :3]
 	predictor.set_image(image_np_rgb)
-	# transformed_boxes = predictor.transform.apply_boxes_torch(
-	#     boxes, image_np.shape[:2])
 	sam_device = comfy.model_management.get_torch_device()
 	masks, scores, _ = predictor.predict(point_coords=None, point_labels=None, box=boxes, multimask_output=False)
-	# print("scores: ", scores)
-
-	# prevent merging of masks below
+	print("scores: ", scores)
+	print("masks shape before any modification:", masks.shape)
+	if masks.ndim == 3:
+		masks = np.expand_dims(masks, axis=0)
+	print("masks shape after ensuring 4D:", masks.shape)
 	# masks = np.transpose(masks, (1, 0, 2, 3))
 	return create_tensor_output(image_np, masks, boxes)
 
@@ -135,7 +135,7 @@ class GroundingDinoSAM2SegmentList:
 		res_images = []
 		res_masks = []
 		for item in image:
-			item = Image.fromarray(np.clip(255. * item.cpu().numpy(), 0, 255).astype(np.uint8)).convert('RGBA')
+			item = Image.fromarray(np.clip(255.0 * item.cpu().numpy(), 0, 255).astype(np.uint8)).convert("RGBA")
 			boxes = groundingdino_predict(grounding_dino_model, item, prompt, threshold)
 			if boxes.shape[0] == 0:
 				break

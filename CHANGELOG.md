@@ -1,5 +1,19 @@
 All notable changes to this project will be documented in this file.
 
+<details><summary>0.1.2 - 26 September 2025</summary>
+
+### Fixed
+- `GroundingDinoSAM2SegmentList` node compatibility with latest Grounding Dino node
+
+</details>
+
+<details><summary>0.1.1 - 5 May 2025</summary>
+
+### Fixed
+- `GroundingDinoSAM2SegmentList` node compatibility with SAM 2.1 models
+
+</details>
+
 <details><summary>0.1.0 - 31 December 2024</summary>
 
 ### Added
