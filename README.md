@@ -4,7 +4,7 @@ A node for [ComfyUI](https://github.com/comfyanonymous/ComfyUI) that takes a lis
 
 For example, it can be used to mask the leftmost subject in an image containing more than one subject of the same class. The workflow below demonstrates the difference between Mask Arbiter (top) and traditional Grounding DINO masking (bottom.)
 
-![workflow_mask_arbiter](example_workflows/workflow.png)
+![workflow_mask_arbiter](example_workflows/workflow_mask_arbiter.png)
 
 ### Installation
 
