@@ -1,5 +1,12 @@
 All notable changes to this project will be documented in this file.
 
+<details><summary>0.1.3 - 28 September 2025</summary>
+
+### Fixed
+- Improved performance of tensor conversion, speeding up the node significantly
+
+</details>
+
 <details><summary>0.1.2 - 26 September 2025</summary>
 
 ### Fixed

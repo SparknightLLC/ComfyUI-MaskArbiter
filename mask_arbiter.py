@@ -40,16 +40,28 @@ class MaskArbiter:
 	def op(self, masks, sort_by, index, resolution, average, reverse):
 		new_masks = list(masks)
 
-		print("Converting masks to tensor format...")
-		for i in range(len(new_masks)):
-			try:
-				mask = np.array(masks[i])
+		# Convert masks to correct format
+		new_masks_out = []
+		for i, m in enumerate(new_masks):
+			# 1. Ensure NumPy array, avoid deep copy if possible
+			if isinstance(m, torch.Tensor):
+				mask = m.detach().cpu().numpy()
+			else:
+				mask = np.asarray(m)
+
+			# 2. Ensure correct shape
+			if mask.ndim == 3 and mask.shape[0] == 1:
 				mask = mask.squeeze(0)
 
-			except:
-				pass
+			if mask.ndim != 2:
+				print(f"Skipping mask {i}, unexpected shape:", mask.shape)
+				continue
+
+			# 3. Convert to BGR
 			mask = cv2.cvtColor(mask, cv2.COLOR_GRAY2BGR)
-			new_masks[i] = mask
+
+			new_masks_out.append(mask)
+		new_masks = new_masks_out
 
 		# print("Resizing masks if needed...")
 		# Resize masks for faster computation, preserving aspect ratio
