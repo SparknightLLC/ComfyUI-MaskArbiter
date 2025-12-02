@@ -20,7 +20,7 @@ Simply drag the image above into ComfyUI and use [ComfyUI Manager » Install Mis
 
 ### Inputs
 
-- `masks`: A list of masks to process with Mask Arbiter, such as the outputs of Segment Anything.
+- `mask` OR `masks`: A list of masks to process with Mask Arbiter, such as the outputs of Segment Anything. Supports either datatype for compatibility with different masking nodes.
 - `sort_by`: The method of sorting your `masks`. Possible options include `leftmost` (sort left to right), `topmost` (sort top to bottom), `innermost` (prioritize closest to center of your image), `largest` (sort by pixel area occupied), `initial` (do not sort), `random` (sort randomly), and `merged` (combine all masks and merge into one.)
 - `reverse`: Reverses the mask list order after sorting. For example, if you sort by `leftmost` and enable `reverse`, you'll get the rightmost subject.
 - `index`: The individual mask to return after sorting, zero-indexed.
