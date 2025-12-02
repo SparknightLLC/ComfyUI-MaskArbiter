@@ -9,7 +9,6 @@ class MaskArbiter:
 	def INPUT_TYPES(cls):
 		return {
 		    "required": {
-		        "masks": ("MASKS", {}),
 		        "sort_by": (["initial", "random", "merged", "leftmost", "topmost", "innermost", "largest"], {
 		            "default": "leftmost"
 		        }),
@@ -23,13 +22,15 @@ class MaskArbiter:
 		        }),
 		    },
 		    "optional": {
+		        "masks": ("MASKS", {}),
+		        "mask": ("MASK", {}),
 		        "average": ("BOOLEAN", {
 		            "default": False,
 		            "tooltip": "If enabled, the average position of mask pixels will be used for sorting instead of the most extreme position. May increase computation time, but is often useful for 'innermost' with masks that have multiple disconnected regions."
 		        }),
 		        "reverse": ("BOOLEAN", {
 		            "default": False
-		        })
+		        }),
 		    }
 		}
 
@@ -37,8 +38,12 @@ class MaskArbiter:
 	FUNCTION = "op"
 	RETURN_TYPES = ("MASK", "MASKS")
 
-	def op(self, masks, sort_by, index, resolution, average, reverse):
-		new_masks = list(masks)
+	def op(self, sort_by, index, resolution, average, reverse, masks=None, mask=None):
+		if mask is not None:
+			masks = mask
+			new_masks = masks
+		else:
+			new_masks = list(masks)
 
 		# Convert masks to correct format
 		new_masks_out = []

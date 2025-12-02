@@ -1,23 +1,16 @@
 All notable changes to this project will be documented in this file.
 
-<details><summary>0.1.3 - 28 September 2025</summary>
+<details><summary>0.2.0 - 2 December 2025</summary>
 
-### Fixed
-- Improved performance of tensor conversion, speeding up the node significantly
-
-</details>
-
-<details><summary>0.1.2 - 26 September 2025</summary>
-
-### Fixed
-- `GroundingDinoSAM2SegmentList` node compatibility with latest Grounding Dino node
+### Added
+- New input `mask` for better compatibility with various SAM nodes (some expect `mask` type, others `masks` - you should use one and not both)
 
 </details>
 
 <details><summary>0.1.1 - 5 May 2025</summary>
 
 ### Fixed
-- `GroundingDinoSAM2SegmentList` node compatibility with SAM 2.1 models
+- `GroundingDinoSAM2SegmentList` node compatibility with SAM 2.1 models, which is currently broken in the node this is based on
 
 </details>
 
