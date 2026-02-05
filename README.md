@@ -11,7 +11,7 @@ For example, it can be used to mask the leftmost subject in an image containing 
 Simply drag the image above into ComfyUI and use [ComfyUI Manager » Install Missing Custom Nodes](https://github.com/ltdrdata/ComfyUI-Manager).
 
 > [!NOTE]
-> ComfyUI-MaskArbiter is packaged with a modified version of the GroundingDinoSAM2Segment node from [ComfyUI-SAM2](https://github.com/neverbiasu/ComfyUI-SAM2). Look for **"GroundingDinoSAM2SegmentList."** This version of the node outputs a list of masks that you can feed into Mask Arbiter. It also enables support for SAM 2.1 models. 
+> ComfyUI-MaskArbiter is packaged with a modified version of the GroundingDinoSAM2Segment node from [ComfyUI-SAM2](https://github.com/neverbiasu/ComfyUI-SAM2). Look for **"GroundingDinoSAM2SegmentList."** This version of the node outputs a list of masks that you can feed into Mask Arbiter. It also enables support for SAM 2.1 models.  **You do not need this if you are using SAM 3 instead.**
 
 > [!NOTE]
 > A quick follow-up to the previous note: I was hoping to eventually retire GroundingDinoSAM2SegmentList from this repository after proposing improvements to ComfyUI-SAM2. However, the relevant issues were incorrectly marked as stale ([#34](https://github.com/neverbiasu/ComfyUI-SAM2/issues/34), [#42](https://github.com/neverbiasu/ComfyUI-SAM2/issues/42)), so the extra node is still required as of September 2025.
