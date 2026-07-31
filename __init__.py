@@ -1,10 +1,7 @@
-import os
-import sys
-
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-
 from .mask_arbiter import *
 from .groundingdinosam2segmentlist import *
+
+__version__ = "0.3.0"
 
 NODE_CLASS_MAPPINGS = {
     "MaskArbiter": MaskArbiter,

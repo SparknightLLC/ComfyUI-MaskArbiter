@@ -1,35 +1,23 @@
-import copy
 import torch
 import numpy as np
 from PIL import Image
 import comfy.model_management
-from sam2.build_sam import build_sam2
-from sam2.sam2_image_predictor import SAM2ImagePredictor
-from local_groundingdino.datasets import transforms as T
-from local_groundingdino.util.utils import clean_state_dict as local_groundingdino_clean_state_dict
-from local_groundingdino.util.slconfig import SLConfig as local_groundingdino_SLConfig
-from local_groundingdino.models import build_model as local_groundingdino_build_model
 
 
-def sam_segment(sam_model, image, boxes):
+def sam_segment(predictor, image, boxes):
 	if boxes.shape[0] == 0:
 		return None
-	predictor = SAM2ImagePredictor(sam_model)
 	image_np = np.array(image)
 	image_np_rgb = image_np[..., :3]
 	predictor.set_image(image_np_rgb)
-	sam_device = comfy.model_management.get_torch_device()
-	masks, scores, _ = predictor.predict(point_coords=None, point_labels=None, box=boxes, multimask_output=False)
-	print("scores: ", scores)
-	print("masks shape before any modification:", masks.shape)
+	masks, _, _ = predictor.predict(point_coords=None, point_labels=None, box=boxes, multimask_output=False)
 	if masks.ndim == 3:
 		masks = np.expand_dims(masks, axis=0)
-	print("masks shape after ensuring 4D:", masks.shape)
-	# masks = np.transpose(masks, (1, 0, 2, 3))
-	return create_tensor_output(image_np, masks, boxes)
+	return create_tensor_output(image_np, masks)
 
 
 def groundingdino_predict(dino_model, image, prompt, threshold):
+	from .local_groundingdino.datasets import transforms as T
 
 	def load_dino_image(image_pil):
 		transform = T.Compose([
@@ -51,21 +39,15 @@ def groundingdino_predict(dino_model, image, prompt, threshold):
 			outputs = model(image[None], captions=[caption])
 		logits = outputs["pred_logits"].sigmoid()[0]  # (nq, 256)
 		boxes = outputs["pred_boxes"][0]  # (nq, 4)
-		# filter output
-		logits_filt = logits.clone()
-		boxes_filt = boxes.clone()
-		filt_mask = logits_filt.max(dim=1)[0] > box_threshold
-		logits_filt = logits_filt[filt_mask]  # num_filt, 256
-		boxes_filt = boxes_filt[filt_mask]  # num_filt, 4
-		return boxes_filt.cpu()
+		filt_mask = logits.max(dim=1)[0] > box_threshold
+		return boxes[filt_mask].cpu()
 
 	dino_image = load_dino_image(image.convert("RGB"))
 	boxes_filt = get_grounding_output(dino_model, dino_image, prompt, threshold)
-	H, W = image.size[1], image.size[0]
-	for i in range(boxes_filt.size(0)):
-		boxes_filt[i] = boxes_filt[i] * torch.Tensor([W, H, W, H])
-		boxes_filt[i][:2] -= boxes_filt[i][2:] / 2
-		boxes_filt[i][2:] += boxes_filt[i][:2]
+	height, width = image.size[1], image.size[0]
+	boxes_filt *= torch.tensor([width, height, width, height], dtype=boxes_filt.dtype)
+	boxes_filt[:, :2] -= boxes_filt[:, 2:] / 2
+	boxes_filt[:, 2:] += boxes_filt[:, :2]
 	return boxes_filt
 
 
@@ -75,33 +57,22 @@ def split_image_mask(image):
 	image_rgb = torch.from_numpy(image_rgb)[
 	    None,
 	]
-	if 'A' in image.getbands():
+	if "A" in image.getbands():
 		mask = np.array(image.getchannel('A')).astype(np.float32) / 255.0
 		mask = torch.from_numpy(mask)[
 		    None,
 		]
 	else:
-		mask = torch.zeros((64, 64), dtype=torch.float32, device="cpu")
+		mask = torch.zeros((1, image.height, image.width), dtype=torch.float32, device="cpu")
 	return (image_rgb, mask)
 
 
-def create_pil_output(image_np, masks, boxes_filt):
+def create_tensor_output(image_np, masks):
 	output_masks, output_images = [], []
-	boxes_filt = boxes_filt.numpy().astype(int) if boxes_filt is not None else None
 	for mask in masks:
-		output_masks.append(Image.fromarray(np.any(mask, axis=0)))
-		image_np_copy = copy.deepcopy(image_np)
-		image_np_copy[~np.any(mask, axis=0)] = np.array([0, 0, 0, 0])
-		output_images.append(Image.fromarray(image_np_copy))
-	return output_images, output_masks
-
-
-def create_tensor_output(image_np, masks, boxes_filt):
-	output_masks, output_images = [], []
-	boxes_filt = boxes_filt.numpy().astype(int) if boxes_filt is not None else None
-	for mask in masks:
-		image_np_copy = copy.deepcopy(image_np)
-		image_np_copy[~np.any(mask, axis=0)] = np.array([0, 0, 0, 0])
+		mask_pixels = np.any(mask, axis=0)
+		image_np_copy = image_np.copy()
+		image_np_copy[~mask_pixels] = 0
 		output_image, output_mask = split_image_mask(Image.fromarray(image_np_copy))
 		output_masks.append(output_mask)
 		output_images.append(output_image)
@@ -132,20 +103,24 @@ class GroundingDinoSAM2SegmentList:
 	RETURN_TYPES = ("IMAGE", "MASKS")
 
 	def op(self, grounding_dino_model, sam_model, image, prompt, threshold):
+		from .sam2.sam2_image_predictor import SAM2ImagePredictor
+
 		res_images = []
 		res_masks = []
+		predictor = SAM2ImagePredictor(sam_model)
 		for item in image:
 			item = Image.fromarray(np.clip(255.0 * item.cpu().numpy(), 0, 255).astype(np.uint8)).convert("RGBA")
 			boxes = groundingdino_predict(grounding_dino_model, item, prompt, threshold)
 			if boxes.shape[0] == 0:
-				break
-			(images, masks) = sam_segment(sam_model, item, boxes)
+				continue
+			(images, masks) = sam_segment(predictor, item, boxes)
 			res_images.extend(images)
 			res_masks.extend(masks)
 		if len(res_images) == 0:
 			_, height, width, _ = image.size()
-			empty_mask = torch.zeros((1, height, width), dtype=torch.uint8, device="cpu")
-			return (empty_mask, empty_mask)
+			empty_image = torch.zeros((1, height, width, 3), dtype=image.dtype, device="cpu")
+			empty_mask = torch.zeros((1, height, width), dtype=torch.float32, device="cpu")
+			return (empty_image, [empty_mask])
 		return (torch.cat(res_images, dim=0), res_masks)
 
 

@@ -1,5 +1,26 @@
 All notable changes to this project will be documented in this file.
 
+<details><summary>0.3.0 - 31 July 2026</summary>
+
+### Added
+- Empty mask batches now return a correctly sized black selected mask instead of raising an exception
+- Node and input tooltips documenting sorting, selection, and precedence behavior
+
+### Fixed
+- `merged` now returns the merged mask instead of the unmodified input
+- `largest` now orders largest masks first
+- Average `leftmost` and `topmost` sorting no longer use the opposite coordinate axis
+- Non-average `innermost` sorting now measures mask pixels instead of identical image dimensions
+- Reverse ordering now works with standard tensor mask batches
+- Evaluation resizing now respects the longest dimension and never unnecessarily upscales masks
+- GroundingDINO/SAM2 batch processing now continues after images with no detections and returns correctly shaped empty outputs
+
+### Changed
+- Reduced sorting memory and CPU work by evaluating single-channel binary masks
+- Removed unused conversions, deep copies, and debug output from the GroundingDINO/SAM2 node
+
+</details>
+
 <details><summary>0.2.0 - 2 December 2025</summary>
 
 ### Added
